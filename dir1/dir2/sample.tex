@@ -1,0 +1,478 @@
+% 東京理科大学理工学部経営工学科
+% 平成15年度修士論文・卒業論文概要スタイル
+%
+% 松井藤五郎 (matsui@ia.noda.tus.ac.jp)
+% Ver. 0.200312100835
+%
+\documentclass[a4paper,10pt,twocolumn]{jsarticle}
+% jsarticle.cls をインストールしていない場合は代わりに jarticle.cls を用いる
+% ただし，レイアウトが異なるため同じ出力にはならない
+%\documentclass[a4paper,11pt,twocolumn]{jarticle}
+
+% Times系フォントを使用するためのパッケージ
+\usepackage{times}
+
+% 数式にTimes系フォントを使用するためのパッケージ
+\usepackage{amsmath,amssymb}
+\usepackage{mathptmx}
+
+% EPSファイルを取り込むためのパッケージ
+\usepackage[dvipdfmx]{graphics,graphicx}
+
+% PDFファイルを作成するためのパッケージ
+\AtBeginDvi{\special{pdf:tounicode 90ms-RKSJ-UCS2}}
+\usepackage[dvipdfmx]{color}
+\usepackage[dvipdfm,bookmarks=true,bookmarksnumbered=true,bookmarkstype=toc,colorlinks,linkcolor=black,citecolor=black,%
+  pdftitle={HTML5のセクショニング要素を用いたWebページの主要コンテンツ抽出手法の提案},% タイトル
+  pdfauthor={今泉 智博},% 作成者
+  pdfsubject={2014年度東京理科大学理工学部経営工学科卒業論文概要},% サブタイトル
+  pdfkeywords={HTML5，主要コンテンツ，抽出}% キーワード
+]{hyperref}
+
+% 余白等の設定
+\oddsidemargin = -9.4truemm
+\topmargin     = -0.4truemm
+\headheight    =    0truemm
+\headsep       =    0truemm
+\textheight    =  251truemm
+\textwidth     =  178truemm
+
+% ページ番号をつけない
+\pagestyle{empty}
+
+% \ddash
+\def\ddash{\protect\@ddash}
+\def\@ddash{\raisebox{.3zw}[0pt]{\hbox to2zw{\hss\hskip.1zw
+  \rule{1.8zw}{.04zw}\hskip.1zw\hss}}}
+
+% 日付を出力しない
+\makeatletter
+\def\@date{}
+\makeatother
+
+% 1段組みに対応
+\makeatletter
+\@dblfptop 0pt
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+\title{HTML5のセクショニング要素を用いた\\Webページの主要コンテンツ抽出手法の提案}
+\author{西山研究室 \qquad 7410009 \qquad 今泉 智博}
+\maketitle
+
+\section{はじめに}
+
+1990年代後半以降，情報の発信及び収集のための手段としてインターネットが普及している．
+総務省によれば，2011年末の国内インターネット利用者人口は9,610万人，普及率は79.1\%である\cite{hakusho24}．
+インターネットの主要な機能にHTMLと呼ばれる言語により記述された文書(Webページ)同士つなぐネットワークであるWorld Wide Web(以下Web)がある．
+1993年に世界全体で130件しか存在しなかったWebサイト数は，2012年には約7億件にまで増加したとの統計がある\cite{livestats}．
+これより今日Web上には，Webページの形で大量の情報が集積されていることが分かる．
+しかしWebページ内には，閲覧や通信の際にユーザーにとって不要な情報が含まれていることが少なくない．
+例として図\ref{pageimage}のWebページ\footnote{http://itpro.nikkeibp.co.jp/atcl/watcher/14/334361/012600170/}には主要コンテンツ以外にナビゲーションや広告といった部分が含まれている．
+このため主要コンテンツとそれ以外の部分(以下不要部分)を機械的に高精度で分類する手法が求められている．
+主要コンテンツ抽出により，機械が自動的にWebページを要約，分類し短時間での内容把握を支援することが可能となるほか，検索エンジンによる検索結果の質の向上や，通信時の負荷軽減によるWebページの表示待ち時間短縮が期待される．
+
+\begin{figure}[htbp]
+\vspace{4mm}
+\begin{center}
+\includegraphics[width=8.5cm,clip]{fig/pageimage.eps}
+\end{center}
+\vspace{-2mm}
+\caption{Webページにおける主要コンテンツの例（破線部分）}
+\vspace{-4mm}
+\label{pageimage}
+\end{figure}
+
+一方，2014年に正式に勧告されたHTML文書の新規格であるHTML5の中で，Webページ内のコンテンツの役割を明示するHTML要素(HTML文書おいてコンテンツの境界を示す識別子)として4種類のセクショニング要素"article"，"section"，"nav"，"aside"が定義された．
+本研究では，このうちのaritcle要素に注目する．
+article要素はユーザーが投稿したコンテンツをマークアップするための要素で，主にニュース記事やブログの投稿部分に用いられる．
+ゆえに本要素が存在するWebページでは，高い精度で主要コンテンツを識別することができる．
+本要素は既に一部のWebページにおいてはarticle要素が導入されているものの，依然として主要コンテンツ部分にarticle要素が使用されていないWebページも多く存在する．
+そこで本研究では，Webページの閲覧，通信時における作業負担軽減を通じたユーザビリティの向上を目的として，article要素内のコンテンツを教師情報としたWebページからの主要コンテンツ抽出手法を提案する．
+その上で実装したシステムを用いて，article要素を持たないWebページからの主要コンテンツの抽出精度を測定，評価する実験を行う．
+
+\section{関連研究}
+
+これまで，機械によりページにおける主要コンテンツを推定あるいは抽出するための手法が研究されてきた．
+代表的な方法に，HTML構造を利用した人手による抽出ルール作成が挙げられる．
+しかしこの方法ではWebページごとにルールを設定しなければならず，さらにHTMLの構造変化が起きた際に修正が必要となる．
+
+そこで中野ら\cite{nakano}は人手で設定した本文抽出ルールを，Webページの構造変化に自動追従させるシステムを提案した．
+しかし同手法では，依然としてWebページごとに抽出ルールを設定する必要がある．
+一方吉田ら\cite{yoshida}は，Webページを複数部分に分割し他ページで類似度が高い部分が出現しなかった部分をページ固有の主要コンテンツと判定し抽出に成功している．
+同氏らの提案する手法では事前の抽出ルール設定を必要としない一方，似通った構造を持つWebページ群にしか適用できない．
+
+中野ら\cite{nakano}や吉田ら\cite{yoshida}の手法では，似たデザインを持つ複数のWebページからの情報抽出を前提とし，抽出対象のWebページの多様性については重点がおかれていない．
+他方抽出するWebページの多様性を重視し，HTML要素の種類やテキストに関する情報から多様なWebページに対して利用可能な本文抽出手法を提案する研究もある．
+
+Bingら\cite{lbing}は，HTMLタグの間のテキスト群に対してスコアリングを行い，比較的高いスコアを持つテキスト群を本文と推定する手法を提案している．
+同研究により，本文部分でテキスト長や句読点数が周辺と比べて多くなることが証明されている．
+またPappasら\cite{pappas}は，Document Object Model(DOM)においてノードをクラスタリングすることで主要コンテンツを求めるSDアルゴリズムを提案している．
+DOMはWebの標準化団体であるWorld Wide Web Consortium\footnote{http://www.w3c.org/}によって定められたAPIで，各HTML要素をノードとする木構造(DOMツリー)にHTML文書を変換することができる．
+SDアルゴリズムでもテキストの文字数や特定のHTML要素の出現といった特徴を考慮していることで，汎用的に本文抽出を可能としている．
+
+本研究でも，汎用的にWebページへ適用できるよう，特徴量にHTML要素の種類やテキストの文字数，句読点数を用いる．
+しかし既存研究では，セクショニング要素の特性は利用されていない．
+本研究ではarticle要素内が主要コンテンツであることを利用し，同要素内のコンテンツに関する特徴量を入力とした教師あり学習を行うことで，主要コンテンツを判別する分類器を構築する．
+そしてarticle要素を持たないWebページに対して分類器を適用し，主要コンテンツ部分の抽出を試みる．
+既にarticle要素は一部のWebページで利用されているため，本手法は人間による教師情報のアノテーションが必要ないという利点を有する．
+最終的には不要部分中のナビゲーションや広告部分にも，対応するセクショニング要素を認識可能なシステムを目指す．
+
+\section{提案手法}
+
+提案手法はarticle要素が使用されたWebページから特徴量を抽出し分類器を構築する学習フェーズと，article要素を持たないWebページに分類器を適用し主要コンテンツを抽出する認識フェーズから成る．
+その概要を図\ref{system}に示す．
+
+\begin{figure*}[hbtp]
+\vspace{2mm}
+\begin{center}
+\includegraphics[width=18cm,clip]{fig/system.eps}
+\end{center}
+\vspace{-6mm}
+\caption{提案手法の概要図}
+\label{system}
+\end{figure*}
+\vspace{2mm}
+
+% \renewcommand{\thesubsection}{\Alph{subsection}}
+\subsection{A: 学習フェーズ}
+
+学習フェーズでは，article要素が既に付与されているWebページを複数の部分に分割し，各部分の内容に対しテキストやタグの種類などから特徴量をスコアリングする．
+得られた特徴量を入力として，主要コンテンツと不要部分を分類する分類器を機械学習により構築する．
+
+% A-I 型式の章番号に変更
+\renewcommand{\thesubsubsection}{\Alph{subsection}-\Roman{subsubsection}}
+
+\subsubsection{Webページ群の取得}\label{getwebpages}
+
+初めにarticle要素を付与済のWebページをHTML文書として収集する．
+収集するWebページの範囲については，主要コンテンツ部分とそれ以外の部分が明確に分離されているニュースサイト及びブログの各投稿ページに限定する．
+またこちらで予め指定したURLから取得するものとし，コンテンツはデータベースにテキストの形で保存する．
+取得したWebページ群を$S$としたとき，各要素は(\ref{dataset})のように表現することができる．
+
+\begin{equation}
+  S=\{D_1，D_2,\dots, D_i,\dots, D_N\} \label{dataset}
+\end{equation}
+
+ここで$D_i(1 \leq i \leq N)$は各Webページである．
+
+\subsubsection{Webページからのブロック抽出}
+
+本研究ではarticle要素内のコンテンツを主要コンテンツとみなし，分類器の構築時に正例データとして学習させる．
+また主要コンテンツ以外の部分は，負例データとして学習せねばならない．
+そこで$D_i$を複数のブロックと呼ばれる単位に分割する．
+本節ではこのブロックを抽出する方法について説明する．
+まず$D_i$には，必ず1つのbody要素と1つ以上のarticle要素が含まれている．
+事前調査により，複数のarticle要素を持つWebページの全てにおいて最初に現れるarticle要素が主要コンテンツであることを確認したため，本研究では最初に現れるarticle要素を主要コンテンツとみなし，それ以降に現れたものについては無視することとする．
+またHTML文書では本来DOMでルートノードに対応するのはhtml要素であるが，本研究ではWebブラウザにコンテンツと表示される部分にコンテンツにのみ注目するため，実際にページコンテンツとして表示されるbody要素以下のみを扱うこととする．
+
+この時$D_i$で最初に現れたarticle要素以下の部分を正例ブロック($B_{Ai}$)，body要素以下をルートブロック($B_{Ri}$)と定義する．
+またDOMツリー上でarticle要素と同じ深さに存在しかつ同じ親を共有する要素(兄弟要素)及び，aritcle要素の各祖先の兄弟要素以下の部分を，不要部分として複数の負例ブロックに分割する．
+しかしこのままでは1つのWebページから得られる負例ブロックの数が多すぎるため，負例ブロックになれる要素として，Pappas\cite{pappas}らのアルゴリズムで定義されている強要素群(Strong Tags)に限定する．
+Pappasらは主要コンテンツになる可能性が高い要素としてStrong Tagsを(\ref{validtags})のように定義している．
+
+\begin{equation}
+  \textit{Strong Tags} = \{\textit{div, td, dd, dt, li}\} \label{validtags}
+\end{equation}
+
+これにより主要コンテンツになりうる要素に絞って判定することができ計算量を削減し適合率を向上させることができる．
+また$B_{Ai}$及び$B_{Bij}$が他のブロックを包含することはない．
+なおarticle要素の祖先要素はいずれのブロックにも含めない．
+さらにscript，style，noscript要素以下は，ブラウザ上で表示されない要素であるためブロック内のコンテンツから除去する．
+以上の手順でDOMツリー上でのWebページから抽出されたブロックの例を図\ref{blocktrain}に示す．
+
+\begin{figure}[th]
+\vspace{2mm}
+\begin{center}
+\includegraphics[width=8.5cm,clip]{fig/blocktrain.eps}
+\end{center}
+\vspace{-6mm}
+\caption{article要素を含むWebページでのブロック抽出の例}
+\label{blocktrain}
+\end{figure}
+
+\subsubsection{ブロックに対するスコアリング}\label{scoring}
+
+次に取得したWebページ$D_i$から抽出したブロック$B_{xi}$について，『主要コンテンツらしさ』を表す特徴量を算出する．
+Bing\cite{lbing}らの研究では，Webページの主要な部分の周辺では比較的文章タグに挟まれる文字数や句読点が多いという仮定を元にしたスコアリングで高い適合率及び再現率を得ている．
+このことから，本研究でも主要コンテンツ判別のためのスコアリングに文字数や句読点の数を利用する．
+また本研究における主要コンテンツは，ニュースやブログの投稿部分であることから，高い割合で投稿日時などの時間情報が含まれていると考えられる．
+さらに主要コンテンツには，主題やパラグラフのマークアップに用いられる要素が多く含まれていると考えられることから，それらの出現回数もスコアに反映する．
+
+よって提案手法では特徴量の元となるスコアとして，
+$B_{xi}$に含まれるテキストからHTML要素や改行などの空白文字を取り除いた部分の文字数($\psi_{text}(B_{xi})$)，
+$B_{xi}$に含まれる句読点数($\psi_{punc}(B_{xi})$)，
+$B_{xi}$が時間情報に関する表現を含んでいるか ($\psi_{time}(B_{xi}) \in \{0: 含んでいる, 1: 含んでいない\}$)，
+$B_{xi}$の中に現れる要素$T$の出現回数($\psi_{tag}(B_{xi},T), T=\{p，div，h1，h2，h3\}$)の各値を求める．
+なおルートブロックに対するスコア($\psi(B_Ri)$)は必ずその上限値となる．
+
+得られたスコア$\psi(B_{xi})$は絶対的な値であるため，ページごとに比較可能となるようルートブロックのスコア$\phi(B_{Ri})$に対する相対的な値$\phi(B_{xi})$に変換し，$\phi(B_{xi})$を最終的なブロックの特徴量として用いる．
+すなわち得られた正例ブロックまたは負例ブロック$B_{xi} = \{B_{Ai}, B_{Bi1}, B_{Bi2}, \dots , B_{BiM}\} \in D_i$の特徴量$\phi(B_{xi})$を(\ref{relative})式で求める．
+
+\begin{equation}
+  \phi(B_{xi}) = \cfrac{\psi(B_{xi})}{\psi(B_{Ri})}\label{relative}
+\end{equation}
+% 図用の表
+% 書き出し終わったらコメントアウト
+% \begin{table}[htbp]
+% \begin{center}
+% \caption{学習用相対スコア}
+% \begin{tabular}{|c|c|c|c|c|} \hline
+% ブロック  & 正解   & $\phi_{text}(B_{xi})$ & $\phi_{punc}(B_{xi})$ & \ldots \\ \hline\hline
+% $B_{Ai}$  & T      & 94.3                & 93.2                & \ldots \\ \hline
+% $B_{Ni1}$ & F      & 46.9                & 0.8                 & \ldots \\ \hline
+% $B_{Ni2}$ & F      & 3.6                 & 0                   & \ldots \\ \hline
+% $B_{Ni3}$ & F      & 0.2                 & 0                   & \ldots \\ \hline
+% \vdots    & \vdots & \vdots              & \vdots              & \ddots \\ \hline
+% \end{tabular}
+% \end{center}
+% \end{table}
+% \begin{table}[htbp]
+% \begin{center}
+% \caption{認識用相対スコア}
+% \begin{tabular}{|c|c|c|c|c|} \hline
+% ブロック   & $\phi_{text}(B'_xi)$ & $\phi_{punc}(B'_xi)$ & \ldots \\ \hline\hline
+% $B'_{Ni1}$ & 0.7                  & 0                    & \ldots \\ \hline
+% $B'_{Ni2}$ & 0.3                  & 0                    & \ldots \\ \hline
+% $B'_{Ni3}$ & 11.1                 & 16.8                 & \ldots \\ \hline
+% $B'_{Ni4}$ & 70.8                 & 65.5                 & \ldots \\ \hline
+% \vdots     & \vdots               & \vdots               & \ddots \\ \hline
+% \end{tabular}
+% \end{center}
+% \end{table}
+
+(\ref{relative})の算出を，取得した全ての$D_i \in S$について行う．
+
+\subsubsection{分類器の構築}\label{sec:constructclassifier}
+
+得られた特徴量を入力として，主要コンテンツと不要部分を分類する分類器を機械学習により構築する．
+この分類器は，aritcle要素が付与されていないWebページ集合$S'$において求められる各ブロックが，正例ブロックすなわち主要コンテンツであるか否かを判定するものである．
+分類器にはナイーブベイズベイズ，ニューラルネットワーク，LIBSVMを用いる．
+
+\subsection{B: 認識フェーズ}
+
+認識フェーズでは学習フェーズで構築した分類器をarticle要素を含まないWebページに適用し，主要コンテンツ部分の認識を行う．
+
+\subsubsection{article要素を含まないWebページ群の取得}
+
+article要素を含まないWebページの集合$S'=\{D'_1，D'_2, D'_3, \dots, D'_k,\dots, D'_N\}$を抽出する．
+Webページの取得及びデータの保存は\ref{getwebpages}と同じ方法で行う．
+
+\subsubsection{Webページからのブロックの抽出}\label{sec:noarticleblockextract}
+
+続いて取得したWebページ$D'_k \in S'$のブロックへの分割を行うが，Webページの分割方法は学習フェーズのときとは異なる．
+学習フェーズではarticle要素を起点に，その兄弟や祖先の兄弟要素をブロックとしたのに対し，認識フェーズでは主要コンテンツを起点としたブロック分割ができない．
+そこでブロックとして，$D'_k$に含まれるStrong Tagsに該当する要素以下のコンテンツを抽出する．
+この時抽出されたブロックが他のブロックを内包している場合があるが，ここではそれを許す．
+$D'_k$におけるDOMツリー上でのブロックの抽出例を図\ref{blocktest}に示す．
+
+\begin{figure}[htbp]
+\vspace{2mm}
+\begin{center}
+\includegraphics[width=8.5cm,clip]{fig/blocktest.eps}
+\end{center}
+\caption{article要素を含まないWebページでのブロック抽出の例}
+\label{blocktest}
+\end{figure}
+\vspace{2mm}
+
+\subsubsection{ブロックに対するスコアリング}
+
+\ref{sec:noarticleblockextract}で得られた各ブロック$B_{yi} \in D'_i$に対する特徴量を\ref{scoring}と同じ方法で算出する．
+
+\subsubsection{分類器を用いた主要コンテンツの抽出}
+
+各ブロックについて\label{sec:constructclassifier}で構築した分類器を用いて主要コンテンツを認識させる．
+この場合1つのWebページが持つ複数のブロックが主要コンテンツと認識される場合や逆にコンテンツが全く抽出されない可能性もある．
+
+\section{実験}\label{sec:impl}
+
+本研究で提案する手法による主要コンテンツの抽出性能を確かめるため，システムの実装と評価実験を行なった．
+
+\subsection{実装環境}
+
+提案する手法の実装は，インターネット接続とデータベース利用が可能なコンピュータ上で行う．
+Webページの収集や保存を行うプログラム(Webクローラー)，及びDOMツリーの構築とDOMノードへのスコアリングを行うプログラムには，実装言語としてRuby 2.0.0を用いた．
+またデータベースエンジンにはMongoDB 2.6.4を使用している．
+さらにスコア解析や分類器構築のためR言語 3.1.0，及びその統合開発環境であるRstudio 0.98.945を用いる．
+
+第三者によりプログラムを組むためのフレームワークを提供するgemと呼ばれるRuby用の追加パッケージが配布されている．
+gemは無償で製作，提供されており誰でも自由に利用することができる．
+本実験においてもWebクローラー構築用フレームワークのAnemoneと，Webページの解析やDOM構築を行うためのフレームワークであるNokogiriを利用してプログラムを作成した．
+またR言語でも統計解析向けの追加のライブラリが有志の開発者によって公開されている．
+分類器生成のため，本研究ではベイジアンフィルタのR言語用実装を提供するe1071パッケージ，ニューラルネットの実装を提供するnnetパッケージ，及びLIBSVMの実装を提供しているkernlabパッケージを利用する．
+
+なおハードウェア環境では，ASUS製ノートパソコン U24Aを使用した．
+当マシンの性能は，OSがWindows 8.1 64ビット，RAM容量 8GB，CPUは周波数2.60GHzである．
+
+\subsection{評価指標}
+
+本システムの評価指標には，分類タスクにおける評価指標の一つである適合率，再現率，F値，及び正確度を用いる．
+抽出された正例ブロックのうち主要コンテンツと認識された件数を$B_{TP}$，不要部分と誤認識された件数を$B_{TF}$，
+また不要部分として誤認識された正例ブロックの件数を$B_{NP}$，不要部分として正しく認識された件数を$B_{NF}$とするとき，
+適合率，再現率，F値，精度は次のように計算される．
+
+\begin{description}
+  \item[適合率] 適合率は分類器により主要コンテンツであると認識されたブロックに占める正例ブロックの割合．
+  \begin{equation}
+    適合率(Pr) = \frac{B_{TP}}{B_{TP} + B_{NF}}
+  \end{equation}
+
+  \item[再現率] 再現率は正例ブロックに占める，分類器により主要コンテンツであると認識されたブロックの割合．
+  \begin{equation}
+    再現率(Re) = \frac{B_{TP}}{B_{TP} + B_{NP}}
+  \end{equation}
+
+  \item[F値] 適合率と再現率の調和平均．一般的に再現率と適合率はトレードオフ関係にあると言われており，F値では総合的な性能を評価することができる．
+  \begin{equation}
+    F値 = \frac{2\cdot Pr \cdot Re}{Pr + Re}
+  \end{equation}
+
+  \item[正確度] ブロック全体のうち正例を主要コンテンツとして，または負例を不要部分として正しく認識できた割合．
+  \begin{equation}
+    正確度 = \frac{B_{TP} + B_{NF}}{B_{TP} + B_{TF} + B_{NP} + B_{NF}}
+  \end{equation}
+\end{description}
+
+実験で用いるテストデータでは，1ページにつき1ブロックのみを正解としてラベリングしているが，正解と完全に一致するブロックではなく正解の祖先あるいは子孫にあたるブロックが主要コンテンツと判別されることがある．
+また提案手法で抽出される主要コンテンツのブロック数は，1ページにつき1つとは限らないため，複数のブロックが主要コンテンツとして判定された場合に，一方が他方を内包している場合もある．
+
+\subsection{実験内容}
+
+\subsubsection*{A: 学習フェーズ}
+
+2015年1月28日に，用意したURLリストを用いて学習データ用のWebページの取得及びブロック抽出を行い，表\ref{dstrain}に示すデータセットを取得した．
+
+\begin{table}[htbp]
+\begin{center}
+\caption{学習用Webページ(artcile要素あり)のデータセット概要}\label{dstrain}
+\scalebox{0.9}{\begin{tabular}{|p{2.3cm}|c|c|c|} \hline
+& ページ数 & 正例ブロック & 負例ブロック \\ \hline\hline
+日本語ニュース & 23 & 23 & 127 \\ \hline
+日本語ブログ   & 35 & 35 & 177 \\ \hline
+合計           & 58 & 58 & 304 \\ \hline
+\end{tabular}}
+\end{center}
+\end{table}
+
+表\ref{dstrain}のブロック群に対して特徴量を算出し，ナイーブベイズ，ニューラルネット，SVMによる分類器は構築を行なった．
+得られたブロックが不均衡データであることからSVMに対しては正例ブロックに対する重み付けを行なった場合と行わなかった場合のそれぞれについて評価を行った．
+この重みは偏りのあるような教師データを利用して学習を行なった際，マージンの決定が数的に多いクラスに有利にならないよう補正するための係数である．
+本研究では負例ブロック側の重みを1，正例ブロック側の重みを正例ブロック数に対する負例ブロック数の比率で与えた．
+% そのうえで構築した分類器で，leave-one-out法による交差検定を行なった結果を表Xに示す．
+
+\subsubsection*{B: 認識フェーズ}
+
+次に別のURLリストで，article要素を持たないWebページから主要コンテンツを認識させるWebページ群$S'$を取得する．
+また$S'$からのブロック抽出を行い，表\ref{dstest}のような結果を得た．
+
+\begin{table}[htbp]
+\begin{center}
+\caption{認識用Webページ(artcile要素なし)のデータセット概要}\label{dstest}
+\scalebox{0.9}{\begin{tabular}{|p{2.3cm}|c|c|c|} \hline
+& ページ数 & 正例ブロック & 負例ブロック \\ \hline\hline
+日本語ニュース & 18 & 18 & 2819 \\ \hline
+日本語ブログ   & 14 & 14 & 1468 \\ \hline
+合計           & 32 & 32 & 4287 \\ \hline
+\end{tabular}}
+\end{center}
+\end{table}
+
+\section{結果と考察}
+
+構築した分類器を，表\ref{dstest}に示すWebページに対して適用した結果を表\ref{resultnews}，表\ref{resultblog}に示す．
+
+\begin{table}[htbp]
+\begin{center}
+\caption{分類結果(ニュース)}\label{resultnews}
+\vspace{-4mm}
+\begin{tabular}{|c|c|c|c|c|} \hline
+分類手法          & 適合率 & 再現率 & F値    & 正確度 \\ \hline\hline
+ナイーブベイズ    & 13.2\% & 97.0\% & 23.2\% & 95.8\% \\ \hline
+ニューラルネット  &  5.0\% & 72.7\% &  9.4\% & 90.9\% \\ \hline
+SVM(重み付けあり) &  0.0\% &  0.0\% &  0.0\% & 99.4\% \\ \hline
+SVM(重み付けなし) &  0.0\% &  0.0\% &  0.0\% & 99.4\% \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{table}[htbp]
+\begin{center}
+\caption{分類結果(ブログ)}\label{resultblog}
+\vspace{-4mm}
+\begin{tabular}{|c|c|c|c|c|} \hline
+分類手法          & 適合率 & 再現率 & F値    & 正確度  \\ \hline\hline
+ナイーブベイズ    & 11.4\% & 97.0\% & 20.4\% & 92.8\% \\ \hline
+ニューラルネット  &  4.3\% & 87.9\% &  8.1\% & 81.1\% \\ \hline
+SVM(重み付けあり) &  0.0\% &  0.0\% &  0.0\% & 99.1\% \\ \hline
+SVM(重み付けなし) &  0.0\% &  0.0\% &  0.0\% & 99.1\% \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+ニュースページ，ブログページともに，再現率がナイーブベイズとニューラルネットで比較的高い値を示している．
+これは構築した分類器が，主要コンテンツを取りこぼしなく正しく認識する性能を持っていることを示す．
+一方適合率が非常に低く値にとどまってしまった．
+これは，正例ブロックに対して負例ブロックの数が多すぎたことが原因であり，正例ブロックではないブロックが主要コンテンツとして認識されてしまったためである．
+
+さらにSVMではこれらの偏りを考慮して，マージンの決定に対する重みを付与したが適合率，再現率ともに0\%となってしまった．
+学習用データセットでは正例ブロックと負例ブロックの割合がおよそ1:5であったのに対し，認識用データセットではその割合がおよそ1:134と非常に大きくなってしまっている．
+つまり学習用データと認識用データで偏り方が異なっていたため，分類精度の向上に寄与しなかったのだと考えられる．
+
+正確度については，ブログページにおけるニューラルネットを除く全ての値が90\%以上の値を得ている．
+しかしこちらについても主要コンテンツが正しく認識する性能ではなく，不要部分の認識が正しく行われていることに依存している．
+このため，当初目的としていた主要コンテンツを正確に抽出できる分類器を構築できたとは言えない．
+
+なおデータセット間での比較を行うと，ナイーブベイズとニューラルネットにおいてニュースの適合率がブログを若干上回っている．
+本研究では特徴量の一つに主要コンテンツ内の文字数や句読点数を用いている．
+これは，ニュースやブログにおいては主要コンテンツ内に含まれる文字数が，不要部分と比べて多くなる傾向があるという過去の研究結果に基づいている．
+確かにニュースページでは全てのWebページにおいて主要コンテンツ内に一定量のテキストが存在することを確認したが，ブログについては図\ref{fail}に示すようなテキスト量が少ないWebページが散見された．
+このような場合に主要コンテンツ抽出に失敗しており，本手法の改良が必要であることを示唆している．
+
+\begin{figure}[tbh]
+\vspace{2mm}
+\begin{center}
+\includegraphics[width=8.5cm,clip]{fig/fail.eps}
+\end{center}
+\vspace{-6mm}
+\caption{主要コンテンツと誤って認識されたブロックの例\\(赤枠内が誤って抽出されたブロック、青枠内が本来の主要コンテンツ)}
+\label{fail}
+\end{figure}
+\vspace{2mm}
+% \begin{table}[htbp]
+% \begin{center}
+% \caption{データセットの正例ブロックに対する特徴量$\phi_{text}$の基本統計量}\label{dsstat}
+% \begin{tabular}{|c|c|c|} \hline
+%          & ニュース & ブログ \\ \hline\hline
+% 平均     & 44.6 & 34.8 \\ \hline
+% 標準偏差 & 23.5 & 18.1 \\ \hline
+% 最小値   &  0.4 &  0.0 \\ \hline
+% 最大値   & 92.6 & 39.1 \\ \hline
+% \end{tabular}
+% \end{center}
+% \end{table}
+
+\section{おわりに}
+
+本研究では，Webを利用するユーザーにとってのユーザビリティの向上を目的として，HTML5のセクショニング要素の一つであるarticle要素を利用した主要コンテンツ抽出手法を提案した．
+提案手法では，article要素内のテキストにおける文字数や句読点数，article要素内に現れる特定の要素の出現回数といった指標を特徴量を教師情報として学習し分類器を構築する．
+このため教師情報を人間がラベリングする必要がないうえ，異なる構造を持つ多様なWebページに対して適用可能である．
+手法の有用性を検証するため，実際のWebページの収集と分類器構築を行うシステムを実装しニュース及びブログページからの主要コンテンツ抽出タスクにおける評価実験を行なった．
+その結果，ニュース及びブログページにおいて最高97.0\%と高い再現率が得られたものの，主要コンテンツの誤認識により適合率やF値が非常に低い値にとどまった．
+これは正例ブロックの絶対数が負例ブロックと比べて非常に少なかったことが主な要因であり，一部のブログページにおいてはテキスト量の不足による認識精度の低下が見られた．
+また学習及び認識に利用したデータセットでは多様なWebページを取得したものの，含まれるWebページの絶対数が既存研究で用いられたものよりも明らかに少なかった．
+
+今後の課題としては，まず学習や認識に用いるデータの不均衡を解消して，認識精度の改善を試みなければならない．
+また，データセットに含まれるWebページ数を既存研究と同数またはそれ以上に増加させたうえでも分類性能を検証する必要があるだろう．
+
+%%% 参考文献 %%
+\begin{thebibliography}{99}
+\bibitem{hakusho24} 総務省 平成24年版 情報通信白書，2012
+\bibitem{livestats} Internet Live Stats，\\http://www.includegraphicsternetlivestats.com/
+\bibitem{nakano} 中野雄介; 寺西裕一; 西尾章治郎. Web ラッパのアグリゲーションサービスへの適用と評価. 情報処理学会論文誌，2012，53.8: 2018-2027．
+\bibitem{yoshida} 吉田光男 乾孝司 山本幹雄， ブログページ集合からのポストおよびコメント自動分離抽出手法， 情報処理学会論文誌， 2013， 54.12: 2502-2512．
+\bibitem{lbing} Bing，L.，Wang，Y.，Zhang，Y.，\& Wang，H. (2008，July). Primary content extraction with mountain model. In Computer and Information Technology，2008. CIT 2008. 8th IEEE International Conference on (pp. 479-484). IEEE．
+\bibitem{pappas} PAPPAS，Nikolaos; KATSIMPRAS，Georgios; STAMATATOS，Efstathios. Extracting informative textual parts from web pages containing user-generated content. In: Proceedings of the 12th International Conference on Knowledge Management and Knowledge Technologies. ACM，2012. p. 4．
+\end{thebibliography}
+\end{document}
